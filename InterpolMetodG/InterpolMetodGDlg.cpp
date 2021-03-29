@@ -155,23 +155,27 @@ BOOL CInterpolMetodGDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
-	m_ControlBorderA.SetWindowTextW(L"-1");		// 1.55
-	m_ControlBorderB.SetWindowTextW(L"2");		// 1.58
-	m_ControlBorderC.SetWindowTextW(L"-1.5");	// -0.1
-	m_ControlBorderD.SetWindowTextW(L"3");		// 2.1
+	m_ControlBorderA.SetWindowTextW(L"-6");		// 1.55
+	m_ControlBorderB.SetWindowTextW(L"6");		// 1.58
+	m_ControlBorderC.SetWindowTextW(L"110");	// -0.1
+	m_ControlBorderD.SetWindowTextW(L"180");		// 2.1
 
-	m_ControlParamAlpha.SetWindowTextW(L"1");
+	m_ControlParamAlpha.SetWindowTextW(L"4");
 	m_ControlParamBeta.SetWindowTextW(L"1");
-	m_ControlParamGamma.SetWindowTextW(L"1");
-	m_ControlParamDelta.SetWindowTextW(L"1");
+	m_ControlParamGamma.SetWindowTextW(L"30");
+	m_ControlParamDelta.SetWindowTextW(L"3");
 	m_ControlParamEpsi.SetWindowTextW(L"1");
 	m_ControlParamMu.SetWindowTextW(L"1");
+
+	m_ControlParamA.SetWindowTextW(L"0");
+	m_ControlParamB.SetWindowTextW(L"5");
 	
 	m_NumKnoots.SetWindowTextW(L"30");
-	m_Deltas.SetCurSel(2);
+	m_Deltas.SetCurSel(1);
+	DiffDelta = 0.1;
 
-	m_ComboBoxParametr.SetCurSel(0); // ОНИ ВМЕСТЕ НАСТРАИВАЮТСЯ
-	m_ControlParamAlpha.EnableWindow(FALSE); // МЫ ВМЕСТЕ НАСТРАИВАЕМСЯ
+	m_ComboBoxParametr.SetCurSel(1); // ОНИ ВМЕСТЕ НАСТРАИВАЮТСЯ
+	m_ControlParamBeta.EnableWindow(FALSE); // МЫ ВМЕСТЕ НАСТРАИВАЕМСЯ
 
 	/*int BorderH, BorderV;
 	GetDlgItem(IDC_ColorFx)->GetWindowRect(&m_RectColorFx);
@@ -198,7 +202,7 @@ BOOL CInterpolMetodGDlg::OnInitDialog()
 
 
 
-	this->SetWindowText(_T("Интерполяция методом Гаусса. Хмарский Глеб ИВТ-31"));
+	this->SetWindowText(_T("Численное Интегрирование методом Прямоугольников. Хмарский Глеб ИВТ-31"));
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -269,13 +273,35 @@ void CInterpolMetodGDlg::CalculateDeltaY() {
 	}
 }
 
+double h=1;
+
+double CInterpolMetodGDlg::Integral(int n) {
+	double Result = 0;
+	h = (b - a) / n;
+	for (double x = a+(h/2); x < b; x+= h)
+	{
+		Result += Function(x)*h;
+	}
+	return Result;
+}
+double CInterpolMetodGDlg::NumericalIntegrational() {
+	double Result=0, PrevRes = 0;
+	PrevRes = Integral(N);
+	for (long n = N; n < 2000000000; n*=2)
+	{
+		Result = Integral(2 * n);
+		if (abs(Result - PrevRes)/3 < DiffDelta) return Result;
+		PrevRes = Result;
+	}
+	
+}
 void CInterpolMetodGDlg::OnPaint()
 {
 	CurrentNomKnoots = 2 * N + 1;
 	logicalCentralPoint = (A + B) / 2;
 	logicalStep = (B - A) / (CurrentNomKnoots-1);
 	
-
+	
 	CPaintDC ClientDC(this);
 	ClientDC.Rectangle(RX1-1, RY1, RX2+1, RY2);
 	ClientDC.IntersectClipRect(RX1-1, RY1, 2*RX2, RY2);
@@ -294,26 +320,42 @@ void CInterpolMetodGDlg::OnPaint()
 		ClientDC.LineTo(pos, RY2);
 	}
 
-	calculateValues();
-	CalculateDeltaY();
+	
 	double Result = 0;
-	if (m_MainFunc) {
-		double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * ((Function(A) - C) / (D - C)));
-		CPoint pStart(x0, y0), pCur;
-		CPen m_NormalPen;
-		m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(10, 184, 10));
+	
+	CPen m_NormalPen;
+	m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(10, 184, 10));
 
-		ClientDC.SelectObject(&m_NormalPen);
-		
-
-		ClientDC.MoveTo(pStart);
-		for (double x = A; x <= B; x += (B - A) / (RX2 - RX1) * 0.05) {
-			pCur.x = RX1 + ((RX2 - RX1) * ((x - A) / (B - A)));
-			pCur.y = RY2 - ((RY2 - RY1) * ((Function(x) - C) / (D - C)));
-
-			ClientDC.LineTo(pCur);			
-		}
+	ClientDC.SelectObject(&m_NormalPen);
+	double* CurSelectedParametr = &alpha;
+	switch (m_ComboBoxParametr.GetCurSel())
+	{
+	case 0:
+		CurSelectedParametr = &alpha;
+		break;
+	case 1:
+		CurSelectedParametr = &beta;
+		break;
+	case 2:
+		CurSelectedParametr = &gamma;
+		break;
+	case 3:
+		CurSelectedParametr = &delta;
+		break;
 	}
+
+	(*CurSelectedParametr) = A;
+	double PPX; // Point Paper X
+	double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * ((NumericalIntegrational() - C) / (D - C)));
+	ClientDC.MoveTo(x0, y0);
+	for (double Param = RX1; Param <= RX2; Param += 1) {		
+		PPX = A + ((Param - RX1) / (RX2 - RX1) * (B - A));
+		(*CurSelectedParametr) = PPX;
+		ClientDC.LineTo(Param, RY2 - ((RY2 - RY1) * ((NumericalIntegrational() - C) / (D - C))));
+	}
+	
+
+	/*
 	if (m_Poly) {
 		double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * ((Function(A) - C) / (D - C))); // Must be PolynomFunction(A)
 		CPoint pStart(x0, y0), pCur;
@@ -416,7 +458,7 @@ void CInterpolMetodGDlg::OnPaint()
 		}
 		if (N > 2) ClientDC.LineTo(RX2, RY2 - ((RY2 - RY1) * (((Function(B + DiffDelta) - Function(B)) / DiffDelta - C) / (D - C)))); //Этой строки вообще не должно быть, но переполнение надо фиксить
 	}
-	
+	*/
 
 
 	//CBrush BrushFx(RGB(10, 184, 10));

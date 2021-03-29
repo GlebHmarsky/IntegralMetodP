@@ -43,7 +43,8 @@ public:
 	double PolynomFunction(double x);
 	void CalculateDeltaY();
 	void calculateValues();
-
+	double Integral(int n);
+	double NumericalIntegrational();
 	double logicalCentralPoint; //x0
 	double logicalStep;//h
 
