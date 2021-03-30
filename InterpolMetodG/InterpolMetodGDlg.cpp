@@ -284,11 +284,8 @@ void CInterpolMetodGDlg::OnPaint()
 	if (!flagNaOut) {
 		flagNaOut = true;
 	}
-	else
-	{
-		/*flagNaOut = false;*/
+	else	
 		return;
-	}
 	CPaintDC ClientDC(this);
 	ClientDC.Rectangle(RX1-1, RY1, RX2+1, RY2);
 	ClientDC.IntersectClipRect(RX1-1, RY1, 2*RX2, RY2);
