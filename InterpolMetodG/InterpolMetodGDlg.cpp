@@ -93,6 +93,8 @@ void CInterpolMetodGDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_IntegralBorderA, m_ControlParamA);
 	DDX_Control(pDX, IDC_IntegralBorderB, m_ControlParamB);
 	DDX_Control(pDX, IDC_ComboBoxParametrs, m_ComboBoxParametr);
+	DDX_Control(pDX, IDC_MAXN, m_MaxN);
+	DDX_Control(pDX, IDC_PROGRESS1, m_Progress);
 }
 
 BEGIN_MESSAGE_MAP(CInterpolMetodGDlg, CDialog)
@@ -157,12 +159,12 @@ BOOL CInterpolMetodGDlg::OnInitDialog()
 	// TODO: Add extra initialization here
 	m_ControlBorderA.SetWindowTextW(L"-6");		// 1.55
 	m_ControlBorderB.SetWindowTextW(L"6");		// 1.58
-	m_ControlBorderC.SetWindowTextW(L"110");	// -0.1
-	m_ControlBorderD.SetWindowTextW(L"180");		// 2.1
+	m_ControlBorderC.SetWindowTextW(L"-10");	// -0.1
+	m_ControlBorderD.SetWindowTextW(L"40");		// 2.1
 
 	m_ControlParamAlpha.SetWindowTextW(L"4");
 	m_ControlParamBeta.SetWindowTextW(L"1");
-	m_ControlParamGamma.SetWindowTextW(L"30");
+	m_ControlParamGamma.SetWindowTextW(L"5");
 	m_ControlParamDelta.SetWindowTextW(L"3");
 	m_ControlParamEpsi.SetWindowTextW(L"1");
 	m_ControlParamMu.SetWindowTextW(L"1");
@@ -170,38 +172,13 @@ BOOL CInterpolMetodGDlg::OnInitDialog()
 	m_ControlParamA.SetWindowTextW(L"0");
 	m_ControlParamB.SetWindowTextW(L"5");
 	
-	m_NumKnoots.SetWindowTextW(L"30");
-	m_Deltas.SetCurSel(1);
-	DiffDelta = 0.1;
-
+	m_NumKnoots.SetWindowTextW(L"500");
+	m_Deltas.SetCurSel(0);
+	DiffDelta = 1;
+	m_Progress.SetScrollRange(2, 0, 100, FALSE);
 	m_ComboBoxParametr.SetCurSel(1); // ОНИ ВМЕСТЕ НАСТРАИВАЮТСЯ
 	m_ControlParamBeta.EnableWindow(FALSE); // МЫ ВМЕСТЕ НАСТРАИВАЕМСЯ
-
-	/*int BorderH, BorderV;
-	GetDlgItem(IDC_ColorFx)->GetWindowRect(&m_RectColorFx);
-	ScreenToClient(&m_RectColorFx);
-	BorderH = (m_RectColorFx.right - m_RectColorFx.left) / 40;
-	BorderV = (m_RectColorFx.bottom - m_RectColorFx.top) / 5 ;
-	m_RectColorFx.InflateRect(-BorderH, -BorderV, -BorderH, -BorderV+5);
-
-	GetDlgItem(IDC_ColorPnx)->GetWindowRect(&m_RectColorPnx);
-	ScreenToClient(&m_RectColorPnx);
-	m_RectColorPnx.InflateRect(-BorderH, -BorderV, -BorderH, -BorderV + 5);
-
-	GetDlgItem(IDC_ColorRnx)->GetWindowRect(&m_RectColorRnx);
-	ScreenToClient(&m_RectColorRnx);
-	m_RectColorRnx.InflateRect(-BorderH, -BorderV, -BorderH, -BorderV + 5);
-
-	GetDlgItem(IDC_ColorDfx)->GetWindowRect(&m_RectColorDFx);
-	ScreenToClient(&m_RectColorDFx);
-	m_RectColorDFx.InflateRect(-BorderH, -BorderV, -BorderH, -BorderV + 5);
 	
-	GetDlgItem(IDC_ColorDPnx)->GetWindowRect(&m_RectColorDPnx);
-	ScreenToClient(&m_RectColorDPnx);
-	m_RectColorDPnx.InflateRect(-BorderH, -BorderV, -BorderH, -BorderV + 5);*/
-
-
-
 	this->SetWindowText(_T("Численное Интегрирование методом Прямоугольников. Хмарский Глеб ИВТ-31"));
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -246,7 +223,7 @@ double CInterpolMetodGDlg::PolynomFunction(double x) {
 
 // return sin(x) + cos(tan(x))
 double CInterpolMetodGDlg::Function(double x) {
-	//return sin(x);
+	//return sin(x) * beta;
 	return alpha * sin(pow(abs(x), beta)) + gamma * cos(tan(delta * x));
 }
 
@@ -274,34 +251,44 @@ void CInterpolMetodGDlg::CalculateDeltaY() {
 }
 
 double h=1;
-
 double CInterpolMetodGDlg::Integral(int n) {
 	double Result = 0;
 	h = (b - a) / n;
-	for (double x = a+(h/2); x < b; x+= h)
+	for (double x = a+(h/2); x < b; x += h)
 	{
-		Result += Function(x)*h;
+		Result += Function(x);
 	}
-	return Result;
+	return Result*h;
 }
+long NMax = 0;
 double CInterpolMetodGDlg::NumericalIntegrational() {
 	double Result=0, PrevRes = 0;
 	PrevRes = Integral(N);
-	for (long n = N; n < 2000000000; n*=2)
+	
+	for (long n = N; n < 1000000; )
 	{
+		if (NMax < n) 
+			NMax = 2*n;
 		Result = Integral(2 * n);
 		if (abs(Result - PrevRes)/3 < DiffDelta) return Result;
+		
+		n *= (abs(Result - PrevRes)) / 10 > DiffDelta ? 32 : 2 ;
+		
 		PrevRes = Result;
 	}
-	
+	return Result;
 }
+bool flagNaOut = false;
 void CInterpolMetodGDlg::OnPaint()
-{
-	CurrentNomKnoots = 2 * N + 1;
-	logicalCentralPoint = (A + B) / 2;
-	logicalStep = (B - A) / (CurrentNomKnoots-1);
-	
-	
+{	
+	if (!flagNaOut) {
+		flagNaOut = true;
+	}
+	else
+	{
+		/*flagNaOut = false;*/
+		return;
+	}
 	CPaintDC ClientDC(this);
 	ClientDC.Rectangle(RX1-1, RY1, RX2+1, RY2);
 	ClientDC.IntersectClipRect(RX1-1, RY1, 2*RX2, RY2);
@@ -324,7 +311,7 @@ void CInterpolMetodGDlg::OnPaint()
 	double Result = 0;
 	
 	CPen m_NormalPen;
-	m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(10, 184, 10));
+	m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(252, 90, 6));
 
 	ClientDC.SelectObject(&m_NormalPen);
 	double* CurSelectedParametr = &alpha;
@@ -343,134 +330,32 @@ void CInterpolMetodGDlg::OnPaint()
 		CurSelectedParametr = &delta;
 		break;
 	}
-
+	NMax = 0;
 	(*CurSelectedParametr) = A;
 	double PPX; // Point Paper X
 	double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * ((NumericalIntegrational() - C) / (D - C)));
 	ClientDC.MoveTo(x0, y0);
-	for (double Param = RX1; Param <= RX2; Param += 1) {		
+	
+	m_Progress.SetPos(0);
+	for (int Param = RX1; Param <= RX2; Param += 2) {
 		PPX = A + ((Param - RX1) / (RX2 - RX1) * (B - A));
 		(*CurSelectedParametr) = PPX;
+		m_Progress.SetPos((Param - RX1) / (RX2 - RX1)*100);
 		ClientDC.LineTo(Param, RY2 - ((RY2 - RY1) * ((NumericalIntegrational() - C) / (D - C))));
 	}
+		
 	
 
-	/*
-	if (m_Poly) {
-		double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * ((Function(A) - C) / (D - C))); // Must be PolynomFunction(A)
-		CPoint pStart(x0, y0), pCur;
-		CPen m_NormalPen;		
-		m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(252, 132, 6));
+	OnEnChangealpha();
+	OnEnChangebeta();
+	OnEnChangegamma();
+	OnEnChangedelta();
+	
+	CString strResult;
+	strResult.Format(L"%d", NMax);
+	m_MaxN.SetWindowTextW(strResult);
 
-		ClientDC.SelectObject(&m_NormalPen);
-
-		ClientDC.MoveTo(pStart);
-		for (double x = A; x < B; x += (B - A) / (RX2 - RX1) * 0.05) {
-			pCur.x = RX1 + ((RX2 - RX1) * ((x - A) / (B - A)));
-			Result = PolynomFunction(x);
-			if (Result > 100000)
-				Result = 100000; 
-			if (Result < -100000)
-				Result = -100000;
-			pCur.y = RY2 - ((RY2 - RY1) * ((Result - C) / (D - C)));
-
-			ClientDC.LineTo(pCur);
-		}
-		if(N>1) ClientDC.LineTo(RX2, RY2 - ((RY2 - RY1) * ((Function(B) - C) / (D - C)))); //Этой строки вообще не должно быть, но переполнение надо фиксить
-	}
-	if (m_Raznost) {
-		double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * ((Function(A) - C) / (D - C)));
-		CPoint pStart(x0, y0), pCur;
-		CPen m_NormalPen;
-		m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(18, 83, 166));
-
-		ClientDC.SelectObject(&m_NormalPen);
-
-		ClientDC.MoveTo(pStart);
-		double MaxY = y0, MaxX= x0, СurY = y0;
-		for (double x = A; x < B; x += (B - A) / (RX2 - RX1) * 0.1) {
-			pCur.x = RX1 + ((RX2 - RX1) * ((x - A) / (B - A)));
-			Result = PolynomFunction(x);
-			if (Result > 100000)
-				Result = 100000;			
-			if (Result < -100000)
-				Result = -100000;
-			
-			pCur.y = СurY = RY2 - ((RY2 - RY1) * (abs(Function(x) - Result) - C) / (D - C));
-
-			if (MaxY > СurY) {
-				MaxY = СurY;
-				MaxX = pCur.x;
-			}
-			ClientDC.LineTo(pCur);
-		}
-		
-		CPen m_NewLinePen;
-		m_NewLinePen.CreatePen(PS_DEFAULT, 3, RGB(250, 0, 0));
-
-		ClientDC.SelectObject(&m_NewLinePen);
-		ClientDC.MoveTo(MaxX,RY1);
-		ClientDC.LineTo(MaxX, RY2);
-	}
-	if (m_DiffMainFunc) {		
-		double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * (((Function(A + DiffDelta)- Function(A))/ DiffDelta - C) / (D - C)));
-		CPoint pStart(x0, y0), pCur;
-		CPen m_NormalPen;
-		m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(120, 0, 220));
-
-		ClientDC.SelectObject(&m_NormalPen);
-
-
-		ClientDC.MoveTo(pStart);
-		for (double x = A; x <= B; x += (B - A) / (RX2 - RX1) * 0.1) {
-			pCur.x = RX1 + ((RX2 - RX1) * ((x - A) / (B - A)));
-			pCur.y = RY2 - ((RY2 - RY1) * (((Function(x + DiffDelta) - Function(x)) / DiffDelta - C) / (D - C)));
-
-			ClientDC.LineTo(pCur);
-		}
-	}
-	if (m_DiffPoly) {
-		
-		double x0 = RX1, y0 = RY2 - ((RY2 - RY1) * (((PolynomFunction(A + DiffDelta) - PolynomFunction(A)) / DiffDelta - C) / (D - C))); // Must be PolynomFunction(A)
-		CPoint pStart(x0, y0), pCur;
-		CPen m_NormalPen;
-		m_NormalPen.CreatePen(PS_DEFAULT, 1, RGB(60, 0, 110));
-
-		ClientDC.SelectObject(&m_NormalPen);
-		double Result2;
-		ClientDC.MoveTo(pStart);
-		for (double x = A; x < B; x += (B - A) / (RX2 - RX1) * 0.1) {
-			pCur.x = RX1 + ((RX2 - RX1) * ((x - A) / (B - A)));
-			Result = PolynomFunction(x + DiffDelta);
-			if (Result > 1000000)
-				Result = 1000000;
-			if (Result < -1000000)
-				Result = -1000000;
-
-			Result2 = PolynomFunction(x);
-			if (Result2 > 1001000)
-				Result2 = 1001000;
-			if (Result2 < -1001000)
-				Result2 = -1001000;
-			pCur.y = RY2 - ((RY2 - RY1) * (((Result-Result2) / DiffDelta - C) / (D - C)));
-
-			ClientDC.LineTo(pCur);
-		}
-		if (N > 2) ClientDC.LineTo(RX2, RY2 - ((RY2 - RY1) * (((Function(B + DiffDelta) - Function(B)) / DiffDelta - C) / (D - C)))); //Этой строки вообще не должно быть, но переполнение надо фиксить
-	}
-	*/
-
-
-	//CBrush BrushFx(RGB(10, 184, 10));
-	//ClientDC.FillRect(&m_RectColorFx, &BrushFx);
-	//CBrush BrushPnx(RGB(252, 132, 6));
-	//ClientDC.FillRect(&m_RectColorPnx, &BrushPnx);
-	//CBrush BrushRnx(RGB(18, 83, 166));
-	//ClientDC.FillRect(&m_RectColorRnx, &BrushRnx);
-	//CBrush BrushDfx(RGB(120, 0, 220));
-	//ClientDC.FillRect(&m_RectColorDFx, &BrushDfx);
-	//CBrush BrushDPnx(RGB(40, 0, 100));
-	//ClientDC.FillRect(&m_RectColorDPnx, &BrushDPnx);
+	
 
 }
 
@@ -486,8 +371,10 @@ void CInterpolMetodGDlg::OnBnClickedButtonpaint()
 {
 	CRect GraficRect(RX1-2, RY1, RX2+2, RY2);
 	InvalidateRect(GraficRect);
-	UpdateWindow();
+	UpdateWindow(); 
+	flagNaOut = false;
 	CInterpolMetodGDlg::OnPaint();
+
 }
 
 CString tmp;
@@ -586,12 +473,12 @@ void CInterpolMetodGDlg::OnCbnSelchangeCombodeltas()
 }
 void CInterpolMetodGDlg::OnEnChangeIntegralbordera()
 {
-	m_ControlBorderA.GetWindowTextW(tmp);
+	m_ControlParamA.GetWindowTextW(tmp);
 	a = _wtof(tmp);	
 }
 void CInterpolMetodGDlg::OnEnChangeIntegralborderb()
 {
-	m_ControlBorderB.GetWindowTextW(tmp);
+	m_ControlParamB.GetWindowTextW(tmp);
 	b = _wtof(tmp);
 }
 
@@ -624,8 +511,6 @@ void CInterpolMetodGDlg::OnCbnSelchangeComboboxparametrs()
 		m_ControlParamBeta.EnableWindow(TRUE);
 		m_ControlParamGamma.EnableWindow(TRUE);
 		m_ControlParamDelta.EnableWindow(FALSE);
-		break;
-	default:
 		break;
 	}
 }

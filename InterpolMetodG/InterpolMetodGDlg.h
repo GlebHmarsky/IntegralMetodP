@@ -100,4 +100,6 @@ public:
 	afx_msg void OnEnChangeIntegralborderb();
 	afx_msg void OnCbnSelchangeComboboxparametrs();
 	
+	CEdit m_MaxN;
+	CProgressCtrl m_Progress;
 };

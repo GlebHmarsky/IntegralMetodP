@@ -42,8 +42,10 @@
 #define IDC_IntegralBorderB             1024
 #define IDC_HEADER                      1025
 #define IDC_EDITNUMKNOTS2               1025
+#define IDC_MAXN                        1025
 #define IDC_ComboDeltas2                1026
 #define IDC_ComboBoxParametrs           1026
+#define IDC_PROGRESS1                   1027
 
 // Next default values for new objects
 // 
@@ -51,7 +53,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        141
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1026
+#define _APS_NEXT_CONTROL_VALUE         1028
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
